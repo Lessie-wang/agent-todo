@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>待办</title>
+<title>Todos</title>
 <style>
   :root{
     --bg:#f4ecdf; --bar:#efe5d4; --card:#fffaf1; --in:#fffdf8; --line:#e3d8c4;
@@ -43,7 +43,7 @@
   }
   #newText{flex:1;min-width:0}
   #newDue{width:76px}
-  #newPri{width:52px}
+  #newPri{width:58px}
   #addBtn{
     flex:0 0 auto; background:#5d8f5a; color:#f7fff5; border:1px solid #4e7d4b;
     border-radius:5px; padding:5px 10px; font-size:12px; cursor:pointer;
@@ -98,27 +98,23 @@
 </head>
 <body>
 <div id="app">
-  <div id="bar" title="点击展开 / 收起（快捷键 ⌥⌘X）">
-    <span class="t">📋 待办</span>
+  <div id="bar">
+    <span class="t" id="brand"></span>
     <span class="c" id="count"></span>
     <span class="sp"></span>
     <span class="chev" id="chev">▁</span>
   </div>
   <div id="body">
     <div id="add">
-      <input id="newText" placeholder="添加一条待办…" autocomplete="off">
-      <input id="newDue" placeholder="截止" autocomplete="off">
-      <select id="newPri">
-        <option value="high">高</option>
-        <option value="mid" selected>中</option>
-        <option value="low">低</option>
-      </select>
+      <input id="newText" autocomplete="off">
+      <input id="newDue" autocomplete="off">
+      <select id="newPri"></select>
       <button id="addBtn">＋</button>
     </div>
     <div id="list"></div>
     <div id="foot">
-      <span class="b" id="tgDone">隐藏已完成</span>
-      <span class="b" id="clearDone">清空已完成</span>
+      <span class="b" id="tgDone"></span>
+      <span class="b" id="clearDone"></span>
       <span class="sp"></span>
       <span class="c" id="hint" style="font-size:10.5px;color:var(--dim2)"></span>
     </div>
@@ -128,8 +124,41 @@
 <script>
 "use strict";
 const PRIS = ["high","mid","low"];
-const PRI_LABEL = {high:"高", mid:"中", low:"低"};
-const PRI_RANK  = {high:0, mid:1, low:2};
+const PRI_RANK = {high:0, mid:1, low:2};
+
+// ---------- i18n (the host sets window.AGENT_TODO_LANG before this runs)
+const LANG = (window.AGENT_TODO_LANG || "zh").toLowerCase().startsWith("en") ? "en" : "zh";
+const T = LANG === "en" ? {
+  brand: "📋 Todos",
+  barTitle: "Click to expand / collapse (⌥⌘X)",
+  add: "Add a todo…", due: "Due",
+  pri: {high:"High", mid:"Mid", low:"Low"},
+  openGrp: "Open",
+  doneGrp: (n, show) => `Done ${n} · click to ${show ? "hide" : "show"}`,
+  tgHide: "Hide done", tgShow: "Show done",
+  clearDone: "Clear done",
+  emptyTitle: "No todos yet", emptyHint: "Type above and press Enter or ＋",
+  nothingOpen: "Nothing open",
+  overdue: "⏰ overdue", emptyText: "(empty)",
+  clearConfirm: n => `Clear ${n} completed?`,
+  countOpen: (o, t) => `<b>${o}</b> open · ${t} total`,
+  countDone: t => `All done · ${t} total`
+} : {
+  brand: "📋 待办",
+  barTitle: "点击展开 / 收起（快捷键 ⌥⌘X）",
+  add: "添加一条待办…", due: "截止",
+  pri: {high:"高", mid:"中", low:"低"},
+  openGrp: "进行中",
+  doneGrp: (n, show) => `已完成 ${n} · 点此${show ? "收起" : "展开"}`,
+  tgHide: "隐藏已完成", tgShow: "显示已完成",
+  clearDone: "清空已完成",
+  emptyTitle: "还没有待办", emptyHint: "在上面输入框写一条，回车或点 ＋",
+  nothingOpen: "没有进行中的待办",
+  overdue: "⏰ 逾期", emptyText: "(空)",
+  clearConfirm: n => `清空 ${n} 条已完成？`,
+  countOpen: (o, t) => `<b>${o}</b> 项待办 · 共 ${t}`,
+  countDone: t => `全部完成 · 共 ${t}`
+};
 
 let STATE = {collapsed:false, seq:0, todos:[]};
 let mini = false;
@@ -149,6 +178,17 @@ function today(){ const d=new Date(); return d.toISOString().slice(0,10); }
 function isLate(t){ return !t.done && t.due && t.due < today(); }
 
 function save(){ STATE.collapsed = mini; send({cmd:"save", data: STATE}); }
+
+// ---------- static chrome
+function initChrome(){
+  document.documentElement.lang = LANG === "en" ? "en" : "zh-CN";
+  $("brand").textContent = T.brand;
+  $("bar").title = T.barTitle;
+  $("newText").placeholder = T.add;
+  $("newDue").placeholder = T.due;
+  $("newPri").innerHTML = PRIS.map(p=>`<option value="${p}"${p==="mid"?" selected":""}>${T.pri[p]}</option>`).join("");
+  $("clearDone").textContent = T.clearDone;
+}
 
 // ---------- data in (pushed by the host)
 window.__todo_load = function(json){
@@ -182,13 +222,13 @@ function sorted(){
 function render(){
   const todos = STATE.todos;
   const open = todos.filter(t => !t.done).length;
-  $("count").innerHTML = open ? `<b>${open}</b> 项待办 · 共 ${todos.length}` : `全部完成 · 共 ${todos.length}`;
-  $("tgDone").textContent = showDone ? "隐藏已完成" : "显示已完成";
+  $("count").innerHTML = open ? T.countOpen(open, todos.length) : T.countDone(todos.length);
+  $("tgDone").textContent = showDone ? T.tgHide : T.tgShow;
 
   const list = $("list");
   if(mini){ list.innerHTML = ""; return; }
   if(!todos.length){
-    list.innerHTML = `<div id="empty">还没有待办<br>在上面输入框写一条，回车或点 ＋</div>`;
+    list.innerHTML = `<div id="empty">${T.emptyTitle}<br>${T.emptyHint}</div>`;
     reportFit();
     return;
   }
@@ -199,12 +239,12 @@ function render(){
     if(t.done){ doneCount++; if(!showDone) continue; }
     if(group === null || (t.done && group !== "done")){
       group = t.done ? "done" : "open";
-      if(!t.done) html += `<div class="grp">进行中</div>`;
-      else if(doneCount) html += `<div class="grp" style="cursor:pointer" onclick="window.__tgDone()">已完成 ${rows.filter(x=>x.done).length} · 点此${showDone?"收起":"展开"}</div>`;
+      if(!t.done) html += `<div class="grp">${T.openGrp}</div>`;
+      else if(doneCount) html += `<div class="grp" style="cursor:pointer" onclick="window.__tgDone()">${T.doneGrp(rows.filter(x=>x.done).length, showDone)}</div>`;
     }
     html += row(t);
   }
-  if(!html.trim()) html = `<div id="empty">没有进行中的待办</div>`;
+  if(!html.trim()) html = `<div id="empty">${T.nothingOpen}</div>`;
   list.innerHTML = html;
   reportFit();
 }
@@ -215,13 +255,13 @@ function row(t){
   return `<div class="${cls.join(" ")}" data-id="${esc(t.id)}">
     <div class="top">
       <input type="checkbox" class="cb" ${t.done ? "checked" : ""}>
-      <input class="tx" value="${esc(t.text)}" placeholder="(空)">
-      <span class="x" title="删除">🗑</span>
+      <input class="tx" value="${esc(t.text)}" placeholder="${esc(T.emptyText)}">
+      <span class="x" title="delete">🗑</span>
     </div>
     <div class="meta">
-      <select class="pri">${PRIS.map(p=>`<option value="${p}"${p===t.priority?" selected":""}>${PRI_LABEL[p]}</option>`).join("")}</select>
-      <input class="${dueCls}" value="${esc(t.due)}" placeholder="截止" autocomplete="off">
-      ${isLate(t) ? `<span class="late">⏰ 逾期</span>` : ""}
+      <select class="pri">${PRIS.map(p=>`<option value="${p}"${p===t.priority?" selected":""}>${T.pri[p]}</option>`).join("")}</select>
+      <input class="${dueCls}" value="${esc(t.due)}" placeholder="${esc(T.due)}" autocomplete="off">
+      ${isLate(t) ? `<span class="late">${T.overdue}</span>` : ""}
     </div>
   </div>`;
 }
@@ -270,7 +310,7 @@ $("list").addEventListener("click", e => {
 $("clearDone").onclick = () => {
   const n = STATE.todos.filter(t => t.done).length;
   if(!n) return;
-  if(!confirm(`清空 ${n} 条已完成？`)) return;
+  if(!confirm(T.clearConfirm(n))) return;
   STATE.todos = STATE.todos.filter(t => !t.done);
   save(); render();
 };
@@ -288,12 +328,14 @@ function toggleMini(){ mini = !mini; applyMini(); save(); render(); }
 $("bar").onclick = toggleMini;
 window.__hostToggleMini = function(){ toggleMini(); };   // the menu-bar "collapse / expand" calls this
 
+initChrome();
+
 // when opened straight in a browser, seed sample data so the UI is easy to tweak
 if(!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.todo)){
   window.__todo_load({collapsed:false, seq:3, todos:[
-    {id:"t1", text:"买牛奶和鸡蛋", done:false, priority:"high", due:"2026-10-20", tags:"生活"},
-    {id:"t2", text:"给周报补上本周进展", done:false, priority:"mid", due:"", tags:"工作"},
-    {id:"t3", text:"预约牙医", done:true, priority:"low", due:"", tags:""}
+    {id:"t1", text:"Ship the streaming parser refactor", done:false, priority:"high", due:"2026-10-20", tags:"agent"},
+    {id:"t2", text:"Review PR #128", done:false, priority:"mid", due:"2026-10-01", tags:"review"},
+    {id:"t3", text:"Write tests for the todo store", done:true, priority:"low", due:"", tags:""}
   ]});
 }
 </script>

@@ -44,6 +44,10 @@ let uiFile = resourceDir.appendingPathComponent("ui.html")
 
 let EMPTY = #"{"collapsed":false,"seq":0,"todos":[]}"#
 
+// Widget UI language: set AGENT_TODO_LANG=en for English text (defaults to Chinese).
+let LANG: String = (ENV["AGENT_TODO_LANG"] ?? "zh").lowercased().hasPrefix("en") ? "en" : "zh"
+func L(_ zh: String, _ en: String) -> String { LANG == "en" ? en : zh }
+
 // ---------------------------------------------------------------- weak bridge
 
 // WKUserContentController strongly retains its handlers; passing `self` directly
@@ -111,11 +115,11 @@ final class Overlay: NSObject, NSApplicationDelegate, NSWindowDelegate,
         let main = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "显示 / 隐藏浮窗", action: #selector(togglePanelVisible), keyEquivalent: "h").target = self
+        appMenu.addItem(withTitle: L("显示 / 隐藏浮窗", "Show / hide"), action: #selector(togglePanelVisible), keyEquivalent: "h").target = self
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "重新载入界面", action: #selector(reload), keyEquivalent: "r").target = self
+        appMenu.addItem(withTitle: L("重新载入界面", "Reload UI"), action: #selector(reload), keyEquivalent: "r").target = self
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: L("退出", "Quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
         NSApp.mainMenu = main
@@ -127,12 +131,12 @@ final class Overlay: NSObject, NSApplicationDelegate, NSWindowDelegate,
         statusItem.button?.title = "☑︎"
         statusItem.button?.toolTip = "agent-todo"
         let m = NSMenu()
-        m.addItem(withTitle: "显示 / 隐藏浮窗", action: #selector(togglePanelVisible), keyEquivalent: "").target = self
-        m.addItem(withTitle: "收拢 / 展开", action: #selector(toggleMiniFromHost), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("显示 / 隐藏浮窗", "Show / hide"), action: #selector(togglePanelVisible), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("收拢 / 展开", "Collapse / expand"), action: #selector(toggleMiniFromHost), keyEquivalent: "").target = self
         m.addItem(.separator())
-        m.addItem(withTitle: "重新载入界面", action: #selector(reload), keyEquivalent: "").target = self
+        m.addItem(withTitle: L("重新载入界面", "Reload UI"), action: #selector(reload), keyEquivalent: "").target = self
         m.addItem(.separator())
-        m.addItem(withTitle: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+        m.addItem(withTitle: L("退出", "Quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         statusItem.menu = m
         if ENV["AGENT_TODO_DEBUG"] != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
@@ -186,7 +190,7 @@ final class Overlay: NSObject, NSApplicationDelegate, NSWindowDelegate,
                         styleMask: [.titled, .closable, .resizable, .utilityWindow, .nonactivatingPanel],
                         backing: .buffered,
                         defer: false)
-        panel.title = "待办"
+        panel.title = L("待办", "Todos")
         panel.appearance = NSAppearance(named: .aqua)
         panel.delegate = self
         panel.isFloatingPanel = true
@@ -202,6 +206,9 @@ final class Overlay: NSObject, NSApplicationDelegate, NSWindowDelegate,
         // the handler must be registered before the WKWebView, or the page sees undefined
         let cfg = WKWebViewConfiguration()
         cfg.userContentController.add(WeakHandler(self), name: "todo")
+        cfg.userContentController.addUserScript(WKUserScript(
+            source: "window.AGENT_TODO_LANG = \"\(LANG)\";",
+            injectionTime: .atDocumentStart, forMainFrameOnly: true))
         if #available(macOS 13.3, *) { cfg.preferences.isElementFullscreenEnabled = false }
 
         webView = WKWebView(frame: panel.contentLayoutRect, configuration: cfg)

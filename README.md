@@ -13,7 +13,10 @@ the same file: click the header to expand, click again to collapse, `⌥⌘X` to
 summon it from anywhere. Edit on the widget or ask the agent — both sides write
 the same file, so they stay in sync within a second.
 
-<p align="center"><img src="assets/preview.png" width="380" alt="the floating widget"></p>
+<p align="center">
+  <img src="assets/preview-en.gif" width="330" alt="agent-todo floating widget (English)">
+  <img src="assets/preview-zh.gif" width="330" alt="agent-todo 浮窗（中文）">
+</p>
 
 ---
 
@@ -89,6 +92,7 @@ python3 todo.py clear-done
 - 点顶栏那条 **📋 待办** → 展开 / 收起
 - **⌥⌘X** → 从任何地方唤出或隐藏
 - 展开后：勾选完成、改文字、设优先级/截止日期、删除、隐藏已完成、清空已完成
+- 英文界面：启动前设 `AGENT_TODO_LANG=en`，窗口标题与菜单栏文案都变英文
 - 关窗只是隐藏（进程还在）；退出走菜单栏 **☑︎** 图标 →「退出」
 
 ## 数据格式 / Data
