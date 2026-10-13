@@ -92,7 +92,7 @@ python3 todo.py clear-done
 - 点顶栏那条 **📋 待办** → 展开 / 收起
 - **⌥⌘X** → 从任何地方唤出或隐藏
 - 展开后：勾选完成、改文字、设优先级/截止日期、删除、隐藏已完成、清空已完成
-- 英文界面：启动前设 `AGENT_TODO_LANG=en`，窗口标题与菜单栏文案都变英文
+- 英文界面：安装时带上环境变量 —— `AGENT_TODO_LANG=en ./install.sh --with-app`（会写进登录项）；或直接以英文启动 `AGENT_TODO_LANG=en "./app/Agent Todo.app/Contents/MacOS/overlay"`
 - 关窗只是隐藏（进程还在）；退出走菜单栏 **☑︎** 图标 →「退出」
 
 ## 数据格式 / Data

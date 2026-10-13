@@ -37,6 +37,14 @@ echo "==> building the desktop widget"
 APP_PATH="$(pwd)/app/Agent Todo.app"
 AGENT_PLIST="$HOME/Library/LaunchAgents/dev.agenttodo.float.plist"
 
+# `open -a` does not forward the shell environment, so to make AGENT_TODO_LANG
+# stick we bake it into the login item.
+LANG_ENV=""
+if [ -n "${AGENT_TODO_LANG:-}" ]; then
+  LANG_ENV="  <key>EnvironmentVariables</key>
+  <dict><key>AGENT_TODO_LANG</key><string>${AGENT_TODO_LANG}</string></dict>"
+fi
+
 echo "==> enabling login autostart → $AGENT_PLIST"
 mkdir -p "$HOME/Library/LaunchAgents"
 cat > "$AGENT_PLIST" <<PLIST
@@ -45,6 +53,7 @@ cat > "$AGENT_PLIST" <<PLIST
 <plist version="1.0">
 <dict>
   <key>Label</key><string>dev.agenttodo.float</string>
+$LANG_ENV
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/open</string>
