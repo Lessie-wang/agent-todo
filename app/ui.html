@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>待办</title>
+<style>
+  :root{
+    --bg:#f4ecdf; --bar:#efe5d4; --card:#fffaf1; --in:#fffdf8; --line:#e3d8c4;
+    --fg:#3b352b; --dim:#857b69; --dim2:#a99e8b;
+    --hi:#cc5a4a; --mid:#c2921f; --lo:#5b8fc7; --ok:#4c9a63;
+    --btn:#efe6d6; --btnb:#ddd1ba; --btnfg:#4a4336;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font:12px/1.45 -apple-system,"SF Pro Text","PingFang SC",sans-serif;
+    color:var(--fg); background:var(--bg); overflow:hidden;
+  }
+  #app{display:flex;flex-direction:column;height:100%}
+
+  /* ---------- header (click to expand / collapse) ---------- */
+  #bar{
+    flex:0 0 auto; display:flex; align-items:center; gap:8px;
+    padding:0 10px; height:34px; background:var(--bar);
+    border-bottom:1px solid var(--line); cursor:pointer; user-select:none;
+  }
+  body.mini #bar{border-bottom:none}
+  #bar .t{font-size:12.5px;font-weight:600}
+  #bar .c{font-size:11px;color:var(--dim)}
+  #bar .c b{color:var(--fg);font-weight:600}
+  #bar .sp{flex:1}
+  #bar .chev{color:var(--dim);font-size:12px;width:18px;text-align:center;border-radius:4px}
+  #bar:hover .chev{background:#e2d7c2;color:var(--fg)}
+
+  /* ---------- body ---------- */
+  #body{flex:0 0 auto;display:flex;flex-direction:column}
+  body.mini #body{display:none}
+
+  #add{display:flex;gap:5px;align-items:center;padding:8px 8px 6px}
+  #add input,#add select{
+    background:var(--in); color:var(--fg); border:1px solid var(--line);
+    border-radius:5px; font-size:12px; padding:5px 7px; outline:none;
+  }
+  #newText{flex:1;min-width:0}
+  #newDue{width:76px}
+  #newPri{width:52px}
+  #addBtn{
+    flex:0 0 auto; background:#5d8f5a; color:#f7fff5; border:1px solid #4e7d4b;
+    border-radius:5px; padding:5px 10px; font-size:12px; cursor:pointer;
+  }
+  #addBtn:hover{background:#6ba167}
+
+  #list{overflow-y:auto;overflow-x:hidden;padding:2px 8px 8px;max-height:none}
+  .it{
+    background:var(--card); border-radius:7px; padding:6px 8px; margin-bottom:5px;
+    border-left:3px solid var(--line);
+  }
+  .it.p-high{border-left-color:var(--hi)}
+  .it.p-mid{border-left-color:var(--mid)}
+  .it.p-low{border-left-color:var(--lo)}
+  .it.done{opacity:.5}
+  .it.done .tx{text-decoration:line-through;color:var(--dim)}
+  .it .top{display:flex;align-items:center;gap:7px}
+  .it input[type=checkbox]{flex:0 0 auto;width:15px;height:15px;accent-color:var(--ok);cursor:pointer}
+  .it .tx{
+    flex:1;min-width:0;background:transparent;border:none;color:var(--fg);
+    font-size:12.5px;padding:2px 3px;outline:none;border-radius:4px;
+  }
+  .it .tx:focus{background:var(--in)}
+  .it .x{flex:0 0 auto;color:var(--dim2);cursor:pointer;padding:0 2px;font-size:12px}
+  .it .x:hover{color:var(--hi)}
+  .it .meta{display:flex;align-items:center;gap:7px;margin-top:5px;padding-left:22px}
+  .it select,.it .due{
+    background:var(--in);color:var(--dim);border:1px solid var(--line);
+    border-radius:4px;font-size:11px;padding:2px 5px;outline:none;
+  }
+  .it .due{width:96px;text-align:center}
+  .it .due.on{color:var(--fg)}
+  .it .due.late{color:var(--hi);border-color:#e3b7ae}
+  .it .late{font-size:10.5px;color:var(--hi)}
+
+  .grp{font-size:10.5px;letter-spacing:.4px;color:var(--dim2);margin:6px 2px 4px}
+  #empty{padding:24px 10px;text-align:center;color:var(--dim2);font-size:11.5px;line-height:1.8}
+
+  #foot{
+    flex:0 0 auto;display:flex;gap:6px;align-items:center;
+    padding:6px 8px;border-top:1px solid var(--line)
+  }
+  #foot .b{
+    font-size:11px;padding:3px 9px;border-radius:5px;cursor:pointer;
+    background:var(--btn);color:var(--btnfg);border:1px solid var(--btnb);
+  }
+  #foot .b:hover{background:#e6dcc9}
+  #foot .sp{flex:1}
+  #list::-webkit-scrollbar{width:6px}
+  #list::-webkit-scrollbar-thumb{background:#d8ccb5;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar" title="点击展开 / 收起（快捷键 ⌥⌘X）">
+    <span class="t">📋 待办</span>
+    <span class="c" id="count"></span>
+    <span class="sp"></span>
+    <span class="chev" id="chev">▁</span>
+  </div>
+  <div id="body">
+    <div id="add">
+      <input id="newText" placeholder="添加一条待办…" autocomplete="off">
+      <input id="newDue" placeholder="截止" autocomplete="off">
+      <select id="newPri">
+        <option value="high">高</option>
+        <option value="mid" selected>中</option>
+        <option value="low">低</option>
+      </select>
+      <button id="addBtn">＋</button>
+    </div>
+    <div id="list"></div>
+    <div id="foot">
+      <span class="b" id="tgDone">隐藏已完成</span>
+      <span class="b" id="clearDone">清空已完成</span>
+      <span class="sp"></span>
+      <span class="c" id="hint" style="font-size:10.5px;color:var(--dim2)"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const PRIS = ["high","mid","low"];
+const PRI_LABEL = {high:"高", mid:"中", low:"低"};
+const PRI_RANK  = {high:0, mid:1, low:2};
+
+let STATE = {collapsed:false, seq:0, todos:[]};
+let mini = false;
+let showDone = true;
+let lastFit = 0;
+
+const $ = id => document.getElementById(id);
+
+function send(msg){
+  try{ window.webkit.messageHandlers.todo.postMessage(msg); }
+  catch(e){ console.log("[send]", JSON.stringify(msg)); }
+}
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+function today(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function isLate(t){ return !t.done && t.due && t.due < today(); }
+
+function save(){ STATE.collapsed = mini; send({cmd:"save", data: STATE}); }
+
+// ---------- data in (pushed by the host)
+window.__todo_load = function(json){
+  try{
+    const s = (typeof json === "string") ? JSON.parse(json) : json;
+    if(!s || typeof s !== "object" || !Array.isArray(s.todos)) return;
+    const ae = document.activeElement;
+    const typing = ae && (ae.tagName === "INPUT" || ae.tagName === "SELECT");
+    STATE = {collapsed: !!s.collapsed, seq: s.seq || 0, todos: s.todos.map(t => ({
+      id: t.id, text: t.text || "", done: !!t.done,
+      priority: PRIS.includes(t.priority) ? t.priority : "mid",
+      due: t.due || "", tags: t.tags || ""
+    }))};
+    mini = STATE.collapsed;
+    applyMini();
+    send({cmd: "resize", mini: mini});   // keep the host window in step, so no stale empty panel
+    if(!typing) render();
+  }catch(e){ console.error("load failed", e); }
+};
+
+function sorted(){
+  return STATE.todos.slice().sort((a,b)=>{
+    if((a.done?1:0) !== (b.done?1:0)) return (a.done?1:0)-(b.done?1:0);
+    const pa = PRI_RANK[a.priority] ?? 3, pb = PRI_RANK[b.priority] ?? 3;
+    if(pa !== pb) return pa - pb;
+    const ua = a.due || "9999-99-99", ub = b.due || "9999-99-99";
+    return ua < ub ? -1 : ua > ub ? 1 : 0;
+  });
+}
+
+function render(){
+  const todos = STATE.todos;
+  const open = todos.filter(t => !t.done).length;
+  $("count").innerHTML = open ? `<b>${open}</b> 项待办 · 共 ${todos.length}` : `全部完成 · 共 ${todos.length}`;
+  $("tgDone").textContent = showDone ? "隐藏已完成" : "显示已完成";
+
+  const list = $("list");
+  if(mini){ list.innerHTML = ""; return; }
+  if(!todos.length){
+    list.innerHTML = `<div id="empty">还没有待办<br>在上面输入框写一条，回车或点 ＋</div>`;
+    reportFit();
+    return;
+  }
+
+  const rows = sorted();
+  let html = "", group = null, doneCount = 0;
+  for(const t of rows){
+    if(t.done){ doneCount++; if(!showDone) continue; }
+    if(group === null || (t.done && group !== "done")){
+      group = t.done ? "done" : "open";
+      if(!t.done) html += `<div class="grp">进行中</div>`;
+      else if(doneCount) html += `<div class="grp" style="cursor:pointer" onclick="window.__tgDone()">已完成 ${rows.filter(x=>x.done).length} · 点此${showDone?"收起":"展开"}</div>`;
+    }
+    html += row(t);
+  }
+  if(!html.trim()) html = `<div id="empty">没有进行中的待办</div>`;
+  list.innerHTML = html;
+  reportFit();
+}
+
+function row(t){
+  const cls = ["it", "p-" + t.priority]; if(t.done) cls.push("done");
+  const dueCls = "due" + (t.due ? " on" : "") + (isLate(t) ? " late" : "");
+  return `<div class="${cls.join(" ")}" data-id="${esc(t.id)}">
+    <div class="top">
+      <input type="checkbox" class="cb" ${t.done ? "checked" : ""}>
+      <input class="tx" value="${esc(t.text)}" placeholder="(空)">
+      <span class="x" title="删除">🗑</span>
+    </div>
+    <div class="meta">
+      <select class="pri">${PRIS.map(p=>`<option value="${p}"${p===t.priority?" selected":""}>${PRI_LABEL[p]}</option>`).join("")}</select>
+      <input class="${dueCls}" value="${esc(t.due)}" placeholder="截止" autocomplete="off">
+      ${isLate(t) ? `<span class="late">⏰ 逾期</span>` : ""}
+    </div>
+  </div>`;
+}
+
+function reportFit(){
+  if(mini) return;
+  const h = $("bar").offsetHeight + $("body").offsetHeight + 2;
+  if(Math.abs(h - lastFit) > 4){ lastFit = h; send({cmd:"fit", h}); }
+}
+
+// ---------- add / edit / delete
+function nextId(){ STATE.seq = (STATE.seq || 0) + 1; return "t" + STATE.seq; }
+function find(id){ return STATE.todos.find(t => t.id === id); }
+
+function addTodo(){
+  const text = $("newText").value.trim();
+  if(!text){ $("newText").focus(); return; }
+  STATE.todos.push({
+    id: nextId(), text, done: false,
+    priority: $("newPri").value, due: $("newDue").value.trim(),
+    tags: "", createdAt: today()
+  });
+  $("newText").value = ""; $("newDue").value = "";
+  save(); render(); $("newText").focus();
+}
+
+$("addBtn").onclick = addTodo;
+$("newText").addEventListener("keydown", e => { if(e.key === "Enter") addTodo(); });
+
+$("list").addEventListener("change", e => {
+  const it = e.target.closest(".it"); if(!it) return;
+  const t = find(it.dataset.id); if(!t) return;
+  if(e.target.classList.contains("cb")){ t.done = e.target.checked; save(); render(); }
+  else if(e.target.classList.contains("pri")){ t.priority = e.target.value; save(); render(); }
+  else if(e.target.classList.contains("tx")){ t.text = e.target.value; save(); }
+  else if(e.target.classList.contains("due")){ t.due = e.target.value.trim(); save(); }
+});
+
+$("list").addEventListener("click", e => {
+  const x = e.target.closest(".x"); if(!x) return;
+  const it = x.closest(".it"); if(!it) return;
+  STATE.todos = STATE.todos.filter(t => t.id !== it.dataset.id);
+  save(); render();
+});
+
+$("clearDone").onclick = () => {
+  const n = STATE.todos.filter(t => t.done).length;
+  if(!n) return;
+  if(!confirm(`清空 ${n} 条已完成？`)) return;
+  STATE.todos = STATE.todos.filter(t => !t.done);
+  save(); render();
+};
+
+window.__tgDone = () => { showDone = !showDone; render(); };
+$("tgDone").onclick = window.__tgDone;
+
+// ---------- expand / collapse
+function applyMini(){
+  document.body.classList.toggle("mini", mini);
+  $("chev").textContent = mini ? "▔" : "▁";
+  if(!mini){ lastFit = 0; }
+}
+function toggleMini(){ mini = !mini; applyMini(); save(); render(); }
+$("bar").onclick = toggleMini;
+window.__hostToggleMini = function(){ toggleMini(); };   // the menu-bar "collapse / expand" calls this
+
+// when opened straight in a browser, seed sample data so the UI is easy to tweak
+if(!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.todo)){
+  window.__todo_load({collapsed:false, seq:3, todos:[
+    {id:"t1", text:"买牛奶和鸡蛋", done:false, priority:"high", due:"2026-10-20", tags:"生活"},
+    {id:"t2", text:"给周报补上本周进展", done:false, priority:"mid", due:"", tags:"工作"},
+    {id:"t3", text:"预约牙医", done:true, priority:"low", due:"", tags:""}
+  ]});
+}
+</script>
+</body>
+</html>
